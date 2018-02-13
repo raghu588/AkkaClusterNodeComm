@@ -1,0 +1,63 @@
+package Cluster
+
+import java.sql.ResultSet
+
+import com.typesafe.config.ConfigFactory
+import akka.actor.{Actor, ActorRef, ActorSystem, Props, RootActorPath}
+import com.datastax.driver.core.{BoundStatement, Cluster, PreparedStatement, Session}
+import Utils._
+//import akka.cluster.Cluster
+import akka.event.Logging
+import scala.collection.JavaConversions._
+
+
+class NodeBackend extends Actor{
+
+  val cluster = akka.cluster.Cluster(context.system)
+
+  val log = Logging(context.system, this)
+
+
+  def receive = {
+
+    case intl: Int => cassandra_connect(Utils.cassandra_host)
+    case _ => println("Unknow Restults")
+
+
+  }
+
+  def cassandra_connect(node: String)  {
+
+    val cluster = Cluster.builder().addContactPoint(node).build()
+    val metadata = cluster.getMetadata()
+    log.info("Connected to cluster: %s\n", metadata.getClusterName())
+    metadata.getAllHosts() map {
+      case host =>
+        log.info("Datatacenter: %s; Host: %s; Rack: %s\n", host.getDatacenter(),
+          host.getAddress(), host.getRack())
+    }
+    var session: Session = cluster.connect(Utils.cassandra_keyspace)
+    session = cluster.connect(Utils.cassandra_keyspace);
+    val statement : PreparedStatement = session.prepare("SELECT * from test.mytable")
+    val boundStatement: BoundStatement = new BoundStatement(statement)
+    val rs = session.execute(boundStatement)
+    println(rs.all())
+  }
+
+  def cassandra_records(rs:ResultSet) ={
+
+    while (rs.next()){
+      val col1 = rs.getString("col1")
+      val col2 = rs.getString("Col2")
+      println(col1 + " " + col2)
+    }
+  }
+}
+
+object NodeBackend {
+
+  val config = ConfigFactory.load.getConfig("NodeBackend")
+  val system = ActorSystem("ClusterSystem", config)
+  val _backend = system.actorOf(Props[NodeBackend])
+
+}
