@@ -6,7 +6,6 @@ import com.typesafe.config.ConfigFactory
 import akka.actor.{Actor, ActorRef, ActorSystem, Props, RootActorPath}
 import com.datastax.driver.core.{BoundStatement, Cluster, PreparedStatement, Session}
 import Utils._
-//import akka.cluster.Cluster
 import akka.event.Logging
 import scala.collection.JavaConversions._
 
@@ -20,15 +19,15 @@ class NodeBackend extends Actor{
 
   def receive = {
 
-    case intl: Int => cassandra_connect(Utils.cassandra_host)
+    case id: Int => cassandra_connect(Utils.cassandra_host,id)
     case _ => println("Unknow Restults")
 
 
   }
 
-  def cassandra_connect(node: String)  {
+  def cassandra_connect(hostname: String, id: Int)  {
 
-    val cluster = Cluster.builder().addContactPoint(node).build()
+    val cluster = Cluster.builder().addContactPoint(hostname).build()
     val metadata = cluster.getMetadata()
     log.info("Connected to cluster: %s\n", metadata.getClusterName())
     metadata.getAllHosts() map {
@@ -38,20 +37,14 @@ class NodeBackend extends Actor{
     }
     var session: Session = cluster.connect(Utils.cassandra_keyspace)
     session = cluster.connect(Utils.cassandra_keyspace);
-    val statement : PreparedStatement = session.prepare("SELECT * from test.mytable")
+    val statement : PreparedStatement = session.prepare("SELECT * from "+ Utils.cassandra_keyspace+"."
+      +Utils.cassandra_table+" where id="+id)
     val boundStatement: BoundStatement = new BoundStatement(statement)
     val rs = session.execute(boundStatement)
     println(rs.all())
   }
 
-  def cassandra_records(rs:ResultSet) ={
 
-    while (rs.next()){
-      val col1 = rs.getString("col1")
-      val col2 = rs.getString("Col2")
-      println(col1 + " " + col2)
-    }
-  }
 }
 
 object NodeBackend {
