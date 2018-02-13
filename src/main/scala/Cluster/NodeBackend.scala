@@ -25,7 +25,7 @@ class NodeBackend extends Actor{
 
   }
 
-  def cassandra_connect(hostname: String, id: Int)  {
+  def cassandra_connect(hostname: String, id: Int)  { 
 
     val cluster = Cluster.builder().addContactPoint(hostname).build()
     val metadata = cluster.getMetadata()
